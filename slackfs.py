@@ -15,7 +15,7 @@ TOKEN = os.environ["SLACK_TOKEN"]
 
 class SlackFS(Operations):
     def __init__(self):
-        self.slack_client = slack.WebClient(token=TOKEN)
+        self.slack_client = slack.WebClient(token=TOKEN, proxy=os.environ.get('https_proxy', None))
         self.channels = {channel["name_normalized"]: channel for channel in self.list_conversations()}
         self.files = defaultdict(dict)
         self.fd = 0
