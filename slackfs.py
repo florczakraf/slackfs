@@ -53,6 +53,7 @@ class SlackFS(Operations):
         p = Path(path)
         mode = 0
         size = 0
+        time_ = time.time()
 
         if path == "/" or str(p.parent) == "/":
             mode = S_IFDIR | 0o700
@@ -60,15 +61,16 @@ class SlackFS(Operations):
             try:
                 mode = S_IFREG | 0o600
                 size = self.get_file(channel_name=str(p.parent.name), file_name=str(p.name))["size"]
+                time_ = self.get_file(channel_name=str(p.parent.name), file_name=str(p.name)).get("created", time.time())
             except KeyError:
                 raise FuseOSError(ENOENT)
 
         return {
-            "st_atime": time.time(),
-            "st_ctime": time.time(),
+            "st_atime": time_,
+            "st_ctime": time_,
             "st_gid": os.getgid(),
             "st_mode": mode,
-            "st_mtime": time.time(),
+            "st_mtime": time_,
             "st_nlink": 2,
             "st_size": size,
             "st_uid": os.getuid(),
@@ -125,7 +127,7 @@ class SlackFS(Operations):
             f.write(contents)
             f.flush()
             resp = self.slack_client.files_upload(file=f.name, channels=channel_id, filename=p.name).data['file']
-            self.files[channel_name][f"{resp['id']}_{resp['name']}"] = self.files[channel_name][p.name]
+            self.files[channel_name][f"{resp['id']}_{resp['name']}"] = {**self.files[channel_name][p.name], **resp}
             del self.files[channel_name][p.name]
 
         return 0
