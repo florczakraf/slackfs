@@ -8,14 +8,15 @@ from stat import S_IFDIR, S_IFREG
 
 import requests
 import slack
-from fuse import FUSE, Operations
+from fuse import FUSE, Operations, FuseOSError
+from errno import ENOENT
 
 TOKEN = os.environ["SLACK_TOKEN"]
 
 
 class SlackFS(Operations):
     def __init__(self):
-        self.slack_client = slack.WebClient(token=TOKEN, proxy=os.environ.get('https_proxy', None))
+        self.slack_client = slack.WebClient(token=TOKEN, proxy=os.environ.get("https_proxy", None))
         self.channels = {channel["name_normalized"]: channel for channel in self.list_conversations()}
         self.files = defaultdict(dict)
         self.fd = 0
@@ -41,7 +42,7 @@ class SlackFS(Operations):
     def get_file_contents(self, channel_name, file_name):
         f = self.get_file(channel_name, file_name)
         if "contents" not in f:
-            r = requests.request("GET", f["url_private_download"], headers={"Authorization": f"Bearer {TOKEN}"},)
+            r = requests.request("GET", f["url_private_download"], headers={"Authorization": f"Bearer {TOKEN}"})
             f["contents"] = r.content
 
         return f["contents"]
@@ -54,8 +55,11 @@ class SlackFS(Operations):
         if path == "/" or str(p.parent) == "/":
             mode = S_IFDIR | 0o700
         else:
-            mode = S_IFREG | 0o600
-            size = self.get_file(channel_name=str(p.parent.name), file_name=str(p.name))["size"]
+            try:
+                mode = S_IFREG | 0o600
+                size = self.get_file(channel_name=str(p.parent.name), file_name=str(p.name))["size"]
+            except KeyError:
+                raise FuseOSError(ENOENT)
 
         return {
             "st_atime": time.time(),
@@ -87,7 +91,30 @@ class SlackFS(Operations):
         p = Path(path)
         contents = self.get_file_contents(channel_name=str(p.parent.name), file_name=str(p.name))
 
-        return contents[offset : offset + length]
+        return bytes(contents[offset : offset + length])
+
+    def create(self, path, mode):
+        p = Path(path)
+        self.fd += 1
+        self.files[p.parent.name][p.name] = {"contents": bytearray(), "size": 0}
+
+        return self.fd
+
+    def write(self, path, data, offset, fh):
+        p = Path(path)
+        file_ = self.get_file(p.parent.name, p.name)
+        contents = file_["contents"]
+
+        if len(contents) < offset + len(data):
+            contents += b"\0" * (offset + len(data) - len(contents))
+            file_["size"] = len(contents)
+
+        contents[offset : offset + len(data)] = data
+
+        return len(data)
+
+    def release(self, path, fh):
+        return 0
 
 
 def main(mountpoint):
