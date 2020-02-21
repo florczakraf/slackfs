@@ -124,7 +124,9 @@ class SlackFS(Operations):
         with NamedTemporaryFile() as f:  # because slack doesn't want our in-memory bytes
             f.write(contents)
             f.flush()
-            self.slack_client.files_upload(file=f.name, channels=channel_id, filename=p.name)
+            resp = self.slack_client.files_upload(file=f.name, channels=channel_id, filename=p.name).data['file']
+            self.files[channel_name][f"{resp['id']}_{resp['name']}"] = self.files[channel_name][p.name]
+            del self.files[channel_name][p.name]
 
         return 0
 
