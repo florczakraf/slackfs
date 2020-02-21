@@ -5,6 +5,7 @@ import time
 from collections import defaultdict
 from pathlib import Path
 from stat import S_IFDIR, S_IFREG
+from tempfile import NamedTemporaryFile
 
 import requests
 import slack
@@ -15,11 +16,12 @@ TOKEN = os.environ["SLACK_TOKEN"]
 
 
 class SlackFS(Operations):
-    def __init__(self):
+    def __init__(self, root):
         self.slack_client = slack.WebClient(token=TOKEN, proxy=os.environ.get("https_proxy", None))
         self.channels = {channel["name_normalized"]: channel for channel in self.list_conversations()}
         self.files = defaultdict(dict)
         self.fd = 0
+        self.root = Path(root)
 
     def list_conversations(self):
         return self.slack_client.conversations_list(limit=200, types="public_channel,private_channel").data["channels"]
@@ -45,7 +47,7 @@ class SlackFS(Operations):
             r = requests.request("GET", f["url_private_download"], headers={"Authorization": f"Bearer {TOKEN}"})
             f["contents"] = r.content
 
-        return f["contents"]
+        return bytes(f["contents"])
 
     def getattr(self, path, fh=None):
         p = Path(path)
@@ -91,7 +93,7 @@ class SlackFS(Operations):
         p = Path(path)
         contents = self.get_file_contents(channel_name=str(p.parent.name), file_name=str(p.name))
 
-        return bytes(contents[offset : offset + length])
+        return contents[offset : offset + length]
 
     def create(self, path, mode):
         p = Path(path)
@@ -114,11 +116,21 @@ class SlackFS(Operations):
         return len(data)
 
     def release(self, path, fh):
+        p = Path(path)
+        channel_name = p.parent.name
+        channel_id = self.channels[channel_name]["id"]
+        contents = self.get_file_contents(channel_name, p.name)
+
+        with NamedTemporaryFile() as f:  # because slack doesn't want our in-memory bytes
+            f.write(contents)
+            f.flush()
+            self.slack_client.files_upload(file=f.name, channels=channel_id, filename=p.name)
+
         return 0
 
 
 def main(mountpoint):
-    FUSE(SlackFS(), mountpoint, nothreads=True, foreground=True)
+    FUSE(SlackFS(mountpoint), mountpoint, nothreads=True, foreground=True)
 
 
 if __name__ == "__main__":
