@@ -47,3 +47,6 @@ New directory creation is UB. Creating files in root of the filesystem is UB, as
 
 There is absolutely no slack api rate limit respecting implemented on slackfs side. Unless official slack
 python api library handles that itself, your key or even account might be temporarily blocked.
+
+At the moment there will be at most some 200 channels visible and each of them will contain at most 200
+files (both arbitrarily chosen by the slack's api).
