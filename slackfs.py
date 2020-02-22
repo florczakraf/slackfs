@@ -59,8 +59,9 @@ class SlackFS(Operations):
         else:
             try:
                 mode = S_IFREG | 0o600
-                size = self.get_file(channel_name=str(p.parent.name), file_name=str(p.name))["size"]
-                time_ = self.get_file(channel_name=str(p.parent.name), file_name=str(p.name)).get("created", time.time())
+                file_ = self.get_file(channel_name=str(p.parent.name), file_name=str(p.name))
+                size = file_["size"]
+                time_ = file_["created"]
             except KeyError:
                 raise FuseOSError(ENOENT)
 
@@ -99,7 +100,7 @@ class SlackFS(Operations):
     def create(self, path, mode):
         p = Path(path)
         self.fd += 1
-        self.files[p.parent.name][p.name] = {"contents": bytearray(), "size": 0}
+        self.files[p.parent.name][p.name] = {"contents": bytearray(), "size": 0, "created": time.time()}
 
         return self.fd
 
