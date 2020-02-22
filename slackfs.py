@@ -127,15 +127,22 @@ class SlackFS(LoggingMixIn, Operations):
     def release(self, path, fh):
         p = Path(path)
         channel_name = p.parent.name
-        channel_id = self.channels[channel_name]["id"]
-        contents = self.get_file_contents(channel_name, p.name)
+        local_file_name = p.name
+        file_ = self.get_file(channel_name, local_file_name)
 
-        with NamedTemporaryFile() as f:  # because slack doesn't want our in-memory bytes
-            f.write(contents)
-            f.flush()
-            resp = self.slack_client.files_upload(file=f.name, channels=channel_id, filename=p.name).data['file']
-            self.files[channel_name][f"{resp['id']}_{resp['name']}"] = {**self.files[channel_name][p.name], **resp}
-            del self.files[channel_name][p.name]
+        if "id" not in file_:
+            with NamedTemporaryFile() as f:  # because slack doesn't want our in-memory bytes
+                f.write(file_["contents"])
+                f.flush()
+
+                channel_id = self.channels[channel_name]["id"]
+                resp = self.slack_client.files_upload(file=f.name, channels=channel_id, filename=local_file_name)
+                remote_file = resp.data["file"]
+                normalized_file_name = self.make_file_name(remote_file)
+
+                file_.update(remote_file)
+                self.files[channel_name][normalized_file_name] = file_
+                del self.files[channel_name][local_file_name]
 
         return 0
 
