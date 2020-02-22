@@ -25,6 +25,10 @@ class SlackFS(LoggingMixIn, Operations):
         self.files = defaultdict(dict)
         self.fd = 0
 
+    @staticmethod
+    def make_file_name(file_):
+        return f"{file_['id']}_{file_['name']}"
+
     def list_conversations(self):
         return self.slack_client.conversations_list(limit=200, types="public_channel,private_channel").data["channels"]
 
@@ -34,7 +38,7 @@ class SlackFS(LoggingMixIn, Operations):
             files = self.slack_client.files_list(channel=channel_id, limit=200).data["files"]
 
             for f in files:
-                file_name = f"{f['id']}_{f['name']}"
+                file_name = self.make_file_name(f)
                 self.files[channel_name][file_name] = f
 
         return self.files[channel_name]
