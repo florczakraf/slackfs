@@ -16,12 +16,11 @@ TOKEN = os.environ["SLACK_TOKEN"]
 
 
 class SlackFS(Operations):
-    def __init__(self, root):
+    def __init__(self):
         self.slack_client = slack.WebClient(token=TOKEN, proxy=os.environ.get("https_proxy", None))
         self.channels = {channel["name_normalized"]: channel for channel in self.list_conversations()}
         self.files = defaultdict(dict)
         self.fd = 0
-        self.root = Path(root)
 
     def list_conversations(self):
         return self.slack_client.conversations_list(limit=200, types="public_channel,private_channel").data["channels"]
@@ -134,7 +133,7 @@ class SlackFS(Operations):
 
 
 def main(mountpoint):
-    FUSE(SlackFS(mountpoint), mountpoint, nothreads=True, foreground=True)
+    FUSE(SlackFS(), mountpoint, nothreads=True, foreground=True)
 
 
 if __name__ == "__main__":
