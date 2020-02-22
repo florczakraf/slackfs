@@ -50,3 +50,7 @@ python api library handles that itself, your key or even account might be tempor
 
 At the moment there will be at most some 200 channels visible and each of them will contain at most 200
 files (both arbitrarily chosen by the slack's api).
+
+Channels and files are fetched lazily only once, there is no way to *invalidate cache* other than remounting
+the whole filesystem. However, after a successful upload of a new file, it's local name will change to reflect
+the aformentioned naming convention.
