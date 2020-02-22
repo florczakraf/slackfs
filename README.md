@@ -30,7 +30,7 @@ $ tree
 ├── some-channel
 │   ├── FU0BQXXXX_Screenshot_2020-02-21_21-21-29.png
 │   ├── FUCKUXXXX_somefile
-│   ├── FUCL2XXXX_Screenshot_2020-02-21_21-23-41.png
+│   └── FUCL2XXXX_Screenshot_2020-02-21_21-23-41.png
 ├── empty-channel
 ├── other-channel
 │   ├── FJPC5XXXX_dh.png
