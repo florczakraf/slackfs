@@ -37,3 +37,13 @@ $ tree
 │   ├── FJS36XXXX_gh.png
 ...
 ```
+
+## Current limitations
+Only some of the FUSE callbacks are implemented to provide the basic functionality. More sophisticated
+are provided by the `fusepy` library and most likely return unconditional success or some garbage.
+There is hardly any error handling in slackfs which in turn cause syscalls to return errors to applications.
+
+New directory creation is UB. Creating files in root of the filesystem is UB, as is modifying existing ones.
+
+There is absolutely no slack api rate limit respecting implemented on slackfs side. Unless official slack
+python api library handles that itself, your key or even account might be temporarily blocked.
