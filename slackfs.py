@@ -5,17 +5,20 @@ import time
 from collections import defaultdict
 from pathlib import Path
 from stat import S_IFDIR, S_IFREG
+import logging
 from tempfile import NamedTemporaryFile
 
 import requests
 import slack
 from fuse import FUSE, Operations, FuseOSError
+from fuse import LoggingMixIn
 from errno import ENOENT
 
-TOKEN = os.environ["SLACK_TOKEN"]
+TOKEN = os.environ["SLACKFS_TOKEN"]
+LOG_LEVEL = os.environ.get("SLACKFS_LOG_LEVEL", logging.ERROR)
 
 
-class SlackFS(Operations):
+class SlackFS(LoggingMixIn, Operations):
     def __init__(self):
         self.slack_client = slack.WebClient(token=TOKEN, proxy=os.environ.get("https_proxy", None))
         self.channels = {channel["name_normalized"]: channel for channel in self.list_conversations()}
@@ -138,4 +141,5 @@ def main(mountpoint):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=LOG_LEVEL)
     main(sys.argv[1])
